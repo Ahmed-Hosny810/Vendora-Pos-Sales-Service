@@ -1,8 +1,8 @@
 ﻿using OpenIddict.Abstractions;
-using Pos.InventoryService.Application.Interfaces.Services;
+using Pos.SalesService.Application.Interfaces.Services;
 using System.Security.Claims;
 
-namespace Pos.InventoryServiceWebApi.Services
+namespace Pos.SalesService.WebApi.Services
 {
     public class CurrentUserService : ICurrentUserService
     {

@@ -25,4 +25,8 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Pos.SalesService.Application\Pos.SalesService.Application.csproj" />
+  </ItemGroup>
+
 </Project>

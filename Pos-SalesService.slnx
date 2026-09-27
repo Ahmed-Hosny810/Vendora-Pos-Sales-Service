@@ -7,6 +7,9 @@
     <Project Path="Pos.SalesService.Infrastructure.Persistence/Pos.SalesService.Infrastructure.Persistence.csproj" />
     <Project Path="Pos.SalesService.Infrastructure.Shared/Pos.SalesService.Infrastructure.Shared.csproj" />
   </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Pos.SalesService.Tests/Pos.SalesService.Tests.csproj" />
+  </Folder>
   <Folder Name="/WebApi/">
     <Project Path="Pos.SalesService.WebApi/Pos.SalesService.WebApi.csproj" />
   </Folder>

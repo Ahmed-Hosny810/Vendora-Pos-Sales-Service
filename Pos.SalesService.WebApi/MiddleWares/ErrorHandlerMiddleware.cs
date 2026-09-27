@@ -1,8 +1,7 @@
-using Pos.InventoryService.Application.Exceptions;
-using Pos.InventoryService.Application.Wrappers;
+using Pos.SalesService.Application.Exceptions;
+using Pos.SalesService.Application.Wrappers;
 using System.Net;
 using System.Text.Json;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Pos.SalesService.WebApi.MiddleWares
 {
@@ -33,12 +32,6 @@ namespace Pos.SalesService.WebApi.MiddleWares
                     case UnauthorizedAccessException:
                         response.StatusCode = (int)HttpStatusCode.Forbidden;
                         break;
-
-                    case DuplicateStockWriteException:
-                    case ConcurrencyConflictException:
-                        response.StatusCode = (int)HttpStatusCode.Conflict;
-                        break;
-
                     case Application.Exceptions.ApiException e:
                         // custom application error
                         response.StatusCode = (int)HttpStatusCode.BadRequest;

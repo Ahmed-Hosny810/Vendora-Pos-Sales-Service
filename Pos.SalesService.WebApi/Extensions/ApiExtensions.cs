@@ -40,7 +40,7 @@ namespace Pos.SalesService.WebApi.Extensions
                 {
                     options.SwaggerEndpoint(
                         $"/swagger/{description.GroupName}/swagger.json",
-                        $"Vendora-Pos Inventory Service API {description.GroupName.ToUpperInvariant()}"
+                        $"Vendora-Pos Sales Service API {description.GroupName.ToUpperInvariant()}"
                     );
                 }
                 options.RoutePrefix = "swagger";
@@ -82,7 +82,7 @@ namespace Pos.SalesService.WebApi.Extensions
             {
                 options.SwaggerDoc(description.GroupName, new OpenApiInfo
                 {
-                    Title = "Vendora-Pos Inventory Service API",
+                    Title = "Vendora-Pos Sales Service API",
                     Version = description.ApiVersion.ToString(),
                     Description = description.IsDeprecated
                         ? "This API version is deprecated."

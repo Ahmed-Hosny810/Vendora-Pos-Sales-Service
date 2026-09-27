@@ -1,3 +1,11 @@
+using Pos.SalesService.Application;
+using Pos.SalesService.Infrastructure.Persistence;
+using Pos.SalesService.Application.Interfaces.Services;
+using Pos.SalesService.WebApi.Extensions;
+using Pos.SalesService.WebApi.MiddleWares;
+using Pos.SalesService.WebApi.Services;
+using Serilog;
+using Pos.SalesService.WebApi.Policies;
 
 namespace Pos.SalesService.WebApi
 {
@@ -7,21 +15,56 @@ namespace Pos.SalesService.WebApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console()
+                .CreateBootstrapLogger();
+
+            builder.Host.UseSerilog((context, services, configuration) =>
+            {
+                configuration
+                    .ReadFrom.Configuration(context.Configuration)
+                    .ReadFrom.Services(services)
+                    .Enrich.FromLogContext();
+            });
+
+            // API Versioning
+            builder.Services.AddApiVersioningExtension();
+
+
+            //-------------------Services Registration-----------------------
+
+            builder.Services.AddPersistenceServices(builder.Configuration);
+
+            //builder.Services.AddSharedInfrastructureServices(builder.Configuration);
+
+            builder.Services.AddApplicationLayer(builder.Configuration);
 
             builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+
+            builder.Services.AddAuthenticationServices(builder.Configuration);
+
+            builder.Services.AddAppPolicies();
+
+            builder.Services.AddHttpContextAccessor();
+
+            builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+            // Swagger (via extension)
+            builder.Services.AddSwaggerExtension();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            app.UseMiddleware<ErrorHandlerMiddleware>();
+
+
             if (app.Environment.IsDevelopment())
             {
-                app.MapOpenApi();
+                app.UseSwaggerExtension();
             }
 
             app.UseHttpsRedirection();
+
+            app.UseAuthentication();
 
             app.UseAuthorization();
 
