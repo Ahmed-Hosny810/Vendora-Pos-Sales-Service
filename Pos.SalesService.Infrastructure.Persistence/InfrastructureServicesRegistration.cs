@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Pos.SalesService.Application.Interfaces;
@@ -26,6 +26,10 @@ namespace Pos.SalesService.Infrastructure.Persistence
             services.AddScoped(typeof(IGenericRepositoryAsync<,>), typeof(GenericRepositoryAsync<,>));
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            services.AddScoped<ICustomerRepositoryAsync, CustomerRepositoryAsync>();
+            services.AddScoped<IPaymentMethodRepositoryAsync, PaymentMethodRepositoryAsync>();
+
             services.AddScoped<ISalesItemValidationService, SalesItemValidationService>();
 
             return services;
