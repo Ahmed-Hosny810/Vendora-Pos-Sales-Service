@@ -8,7 +8,7 @@ using Pos.SalesService.Infrastructure.Persistence.ReadModels;
 namespace Pos.SalesService.Infrastructure.Persistence.Services;
 
 /// <inheritdoc />
-public class SalesItemValidationService : ISalesItemValidationService
+public class SalesItemValidationService : ISalesValidationService
 {
     private const string Active = "Active";
     private readonly ApplicationDbContext _context;

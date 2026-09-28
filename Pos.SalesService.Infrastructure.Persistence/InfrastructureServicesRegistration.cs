@@ -28,9 +28,10 @@ namespace Pos.SalesService.Infrastructure.Persistence
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             services.AddScoped<ICustomerRepositoryAsync, CustomerRepositoryAsync>();
+            services.AddScoped<ICashierShiftRepositoryAsync, CashierShiftRepositoryAsync>();
             services.AddScoped<IPaymentMethodRepositoryAsync, PaymentMethodRepositoryAsync>();
 
-            services.AddScoped<ISalesItemValidationService, SalesItemValidationService>();
+            services.AddScoped<ISalesValidationService, SalesItemValidationService>();
 
             return services;
         }

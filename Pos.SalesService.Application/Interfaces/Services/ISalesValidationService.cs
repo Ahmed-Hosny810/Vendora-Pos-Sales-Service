@@ -4,7 +4,7 @@ using Pos.SalesService.Application.Wrappers;
 namespace Pos.SalesService.Application.Interfaces.Services;
 
 /// <summary>Reads external Branch/Catalog data and returns expected business failures as results.</summary>
-public interface ISalesItemValidationService
+public interface ISalesValidationService
 {
     /// <summary>Checks that the branch is active and belongs to the authenticated tenant.</summary>
     Task<Result> ValidateBranchAsync(Guid branchId, CancellationToken cancellationToken);

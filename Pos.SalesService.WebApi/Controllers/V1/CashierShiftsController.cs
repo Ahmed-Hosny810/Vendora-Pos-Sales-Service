@@ -1,0 +1,39 @@
+using Asp.Versioning;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Pos.SalesService.Application.Common.Constants;
+using Pos.SalesService.Application.Features.CashierShifts.Queries.GetAllQuery;
+using Pos.SalesService.Application.Features.CashierShifts.Queries.GetByIdQuery;
+using Pos.SalesService.Application.Features.CashierShifts.Queries.GetCurrentQuery;
+
+namespace Pos.SalesService.WebApi.Controllers.V1;
+
+[ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[Authorize(Policy = SalesPolicies.OperateShifts)]
+public class CashierShiftsController : ControllerBase
+{
+    private readonly IMediator _mediator;
+    public CashierShiftsController(IMediator mediator) { _mediator = mediator; }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll([FromQuery] GetCashierShiftsQuery query,
+        CancellationToken cancellationToken)
+        => Ok(await _mediator.Send(query, cancellationToken));
+
+    [HttpGet("current")]
+    public async Task<IActionResult> GetCurrent(CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new GetCurrentCashierShiftQuery(), cancellationToken);
+        return result.IsSuccess ? Ok(result) : NotFound(result);
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new GetCashierShiftByIdQuery { ShiftId = id }, cancellationToken);
+        return result.IsSuccess ? Ok(result) : NotFound(result);
+    }
+}

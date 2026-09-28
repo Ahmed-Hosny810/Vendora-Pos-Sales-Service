@@ -8,7 +8,8 @@
 
   <ItemGroup>
     <Folder Include="DTOS\" />
-    <Folder Include="Features\" />
+    <Folder Include="Features\CashierShifts\DTOs\" />
+    <Folder Include="Features\CashierShifts\Queries\" />
     <Folder Include="Settings\" />
   </ItemGroup>
 
