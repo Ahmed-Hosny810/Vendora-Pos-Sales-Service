@@ -1,5 +1,3 @@
-using Pos.SalesService.Domain.Constants;
-
 namespace Pos.SalesService.Domain.Models;
 
 public class SaleReturnItem : SalesEntity
