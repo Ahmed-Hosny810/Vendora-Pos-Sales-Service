@@ -1,8 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Pos.SalesService.Application.Exceptions;
 using Pos.SalesService.Application.Interfaces;
 using Pos.SalesService.Application.Interfaces.Repositories;
+using Pos.SalesService.Application.Wrappers;
+using Pos.SalesService.Domain.Constants;
 using Pos.SalesService.Domain.Models;
 using Pos.SalesService.Infrastructure.Persistence.Contexts;
+using System.Text.Json;
 
 namespace Pos.SalesService.Infrastructure.Persistence.Repositories
 {
@@ -81,6 +85,106 @@ namespace Pos.SalesService.Infrastructure.Persistence.Repositories
             _context.Entry(sale).Property(s => s.UpdatedAt).IsModified = true;
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task<Result<Guid>> FinalizeWithReceiptAsync(Guid tenantId,Guid saleId,Guid userId,CancellationToken cancellationToken)
+        {
+            const int maxAttempts = 3;
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+               
+                _context.ChangeTracker.Clear();
+
+                var sale = await _context.Sales
+                    .Include(s => s.Items)
+                    .SingleOrDefaultAsync(s => s.TenantId == tenantId && s.Id == saleId, cancellationToken);
+
+                if (sale == null)
+                    return Result<Guid>.Failure("Sale was not found.");
+
+                if (sale.Status == SaleStatus.Completed)
+                    return Result<Guid>.Success(sale.Id);
+
+                if (sale.Status != SaleStatus.Completing)
+                    return Result<Guid>.Failure("The sale is no longer awaiting completion.");
+
+                var sequence = await _context.ReceiptSequences.SingleOrDefaultAsync(
+                    s => s.TenantId == tenantId &&
+                         s.BranchId == sale.BranchId &&
+                         s.DocumentType == ReceiptDocumentType.Sale,
+                    cancellationToken);
+
+                if (sequence == null)
+                    return Result<Guid>.Failure(
+                        "Configure a sale receipt sequence for this branch, then retry completion.");
+
+                if (sequence.LastNumber == long.MaxValue)
+                    return Result<Guid>.Failure("The receipt sequence has reached its limit.");
+
+                sequence.LastNumber++;
+
+                var receiptNumber = $"{sequence.Prefix}-{sequence.LastNumber:D8}";
+
+                var now = DateTime.UtcNow;
+
+                sale.ReceiptNumber = receiptNumber;
+                sale.Status = SaleStatus.Completed;
+                sale.CompletedAt = now;
+                sale.UpdatedAt = now;
+
+                sale.StatusHistory.Add(new SaleStatusHistory
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    SaleId = sale.Id,
+                    OldStatus = SaleStatus.Completing,
+                    NewStatus = SaleStatus.Completed,
+                    ChangedByUserId = userId,
+                    ChangedAt = now,
+                    Reason = "Sale completed and receipt issued."
+                });
+
+                // Stage the event in the same transaction as the status change.
+                // If SaveChangesAsync below fails, this row is never committed either.
+                //var eventId = Guid.NewGuid();
+
+                //var saleCompletedEvent = new SaleCompleted(
+                //    eventId,
+                //    tenantId,
+                //    sale.Id,
+                //    sale.BranchId,
+                //    receiptNumber,
+                //    sale.Total,
+                //    sale.Items.Select(i => new SaleCompletedItem(
+                //        i.ProductId, i.ProductVariantId, i.Quantity, i.TrackInventorySnapshot)).ToList(),
+                //    now);
+
+                //_context.OutboxMessages.Add(new OutboxMessage
+                //{
+                //    Id = eventId,
+                //    TenantId = tenantId,
+                //    EventType = nameof(SaleCompleted),
+                //    Payload = JsonSerializer.Serialize(saleCompletedEvent),
+                //    OccurredAt = now
+                //});
+
+                try
+                {
+                    // The counter, sale, history and outbox event commit or roll back together.
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    return Result<Guid>.Success(sale.Id);
+                }
+                catch (ConcurrencyConflictException)
+                {
+                    // The next iteration reloads the sale, receipt counter and rebuilds the event.
+                    _context.ChangeTracker.Clear();
+                }
+            }
+
+            return Result<Guid>.Failure(
+                "The receipt could not be allocated because of concurrent updates. " +
+                "Retry completion; do not collect payment again.");
         }
     }
 }

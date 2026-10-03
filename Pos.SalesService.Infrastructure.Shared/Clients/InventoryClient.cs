@@ -1,4 +1,4 @@
-﻿
+
 using Pos.SalesService.Application.DTOS.InventoryClient;
 using Pos.SalesService.Application.Interfaces.Clients;
 using Pos.SalesService.Application.Interfaces.Services;
@@ -138,6 +138,9 @@ namespace Pos.SalesService.Infrastructure.Shared.Clients
              object? body,
              CancellationToken cancellationToken)
         {
+            if (_httpClient.BaseAddress == null)
+                return Result<T>.Failure("Inventory service address is not configured.");
+
             var accessToken = _currentUserService.AccessToken;
 
             if (string.IsNullOrWhiteSpace(accessToken))

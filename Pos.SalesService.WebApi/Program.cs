@@ -37,6 +37,16 @@ namespace Pos.SalesService.WebApi
             builder.Services.AddPersistenceServices(builder.Configuration);
 
             builder.Services.AddSharedInfrastructure();
+            builder.Services.AddHttpClient<
+                Pos.SalesService.Application.Interfaces.Clients.IInventoryClient,
+                Pos.SalesService.Infrastructure.Shared.Clients.InventoryClient>(client =>
+            {
+                // Set Inventory:BaseUrl for the deployed Inventory service.
+                var baseUrl = builder.Configuration["Inventory:BaseUrl"];
+                if (Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
+                    client.BaseAddress = uri;
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
 
             builder.Services.AddApplicationLayer(builder.Configuration);
 

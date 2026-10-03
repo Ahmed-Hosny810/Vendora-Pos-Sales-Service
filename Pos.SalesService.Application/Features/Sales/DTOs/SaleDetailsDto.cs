@@ -20,6 +20,10 @@ namespace Pos.SalesService.Application.Features.Sales.DTOs
         public decimal TaxTotal { get; set; }
         public decimal Total { get; set; }
         public decimal PaidAmount { get; set; }
+        public decimal ChangeAmount { get; set; }
+        public decimal NetPaid => PaidAmount - ChangeAmount;
+        public decimal RemainingDue => Math.Max(Total - NetPaid, 0);
+        public bool IsFullyPaid => NetPaid == Total;
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public byte[] RowVersion { get; set; } = Array.Empty<byte>();

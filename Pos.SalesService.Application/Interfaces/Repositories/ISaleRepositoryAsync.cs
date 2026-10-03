@@ -1,4 +1,5 @@
 
+using Pos.SalesService.Application.Wrappers;
 using Pos.SalesService.Domain.Models;
 
 namespace Pos.SalesService.Application.Interfaces.Repositories
@@ -10,5 +11,6 @@ namespace Pos.SalesService.Application.Interfaces.Repositories
         Task<Sale?> GetByIdempotencyKeyAsync(Guid tenantId,Guid idempotencyKey,CancellationToken cancellationToken);
         void RemoveDiscount(Sale sale, SaleDiscount discount);
 
+        Task<Result<Guid>> FinalizeWithReceiptAsync(Guid tenantId,Guid saleId,Guid userId,CancellationToken cancellationToken);
     }
 }

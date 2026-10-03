@@ -12,6 +12,7 @@ namespace Pos.SalesService.Application.Mapping
     {
         public GeneralProfile()
         {
+            CreateMap<SalePayment, Pos.SalesService.Application.Features.SalePayments.DTOs.SalePaymentDto>();
             CreateMap<Customer, CustomerDto>();
             CreateMap<CashierShift, CashierShiftDto>();
             CreateMap<PaymentMethod, PaymentMethodDto>();

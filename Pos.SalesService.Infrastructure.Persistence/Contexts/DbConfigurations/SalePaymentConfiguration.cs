@@ -17,6 +17,7 @@ public class SalePaymentConfiguration : IEntityTypeConfiguration<SalePayment>
         builder.Property(x => x.PaymentMethodNameSnapshot).HasMaxLength(80).IsRequired();
         builder.Property(x => x.PaymentMethodCodeSnapshot).HasMaxLength(50).IsRequired();
         builder.Property(x => x.ReferenceNumber).HasMaxLength(100);
+        builder.Property(x => x.CancellationReason).HasMaxLength(500);
         builder.Property(x => x.Status).HasMaxLength(30).IsRequired();
         builder.Property(x => x.Amount).HasPrecision(18, 2);
         builder.Property(x => x.ChangeAmount).HasPrecision(18, 2);
