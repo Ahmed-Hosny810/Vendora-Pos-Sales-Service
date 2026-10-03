@@ -1,4 +1,5 @@
 using Pos.SalesService.Application.DTOs;
+using Pos.SalesService.Application.DTOS;
 using Pos.SalesService.Application.Wrappers;
 
 namespace Pos.SalesService.Application.Interfaces.Services;
@@ -21,4 +22,8 @@ public interface ISalesValidationService
     /// </summary>
     Task<Result<ValidatedSaleItemDto>> ValidateSaleItemAsync(Guid productId, Guid? productVariantId,
         decimal quantity, CancellationToken cancellationToken);
+
+    // batch version.
+    Task<Result<List<ValidatedSaleItemDto>>> ValidateSaleItemsAsync(
+        List<SaleItemValidationRequest> items, CancellationToken cancellationToken);
 }

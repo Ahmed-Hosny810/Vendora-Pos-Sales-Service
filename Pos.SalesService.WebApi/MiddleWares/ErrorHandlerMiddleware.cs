@@ -32,6 +32,11 @@ namespace Pos.SalesService.WebApi.MiddleWares
                     case UnauthorizedAccessException:
                         response.StatusCode = (int)HttpStatusCode.Forbidden;
                         break;
+
+                    case ConcurrencyConflictException:
+                        response.StatusCode = (int)HttpStatusCode.Conflict;
+                        break;
+
                     case Application.Exceptions.ApiException e:
                         // custom application error
                         response.StatusCode = (int)HttpStatusCode.BadRequest;

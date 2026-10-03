@@ -1,8 +1,9 @@
 
 using AutoMapper;
 using Pos.SalesService.Application.Features.CashierShifts.DTOs;
-using Pos.SalesService.Application.Features.PaymentMethods.DTOs;
 using Pos.SalesService.Application.Features.Customers.DTOs;
+using Pos.SalesService.Application.Features.PaymentMethods.DTOs;
+using Pos.SalesService.Application.Features.Sales.DTOs;
 using Pos.SalesService.Domain.Models;
 
 namespace Pos.SalesService.Application.Mapping
@@ -14,7 +15,8 @@ namespace Pos.SalesService.Application.Mapping
             CreateMap<Customer, CustomerDto>();
             CreateMap<CashierShift, CashierShiftDto>();
             CreateMap<PaymentMethod, PaymentMethodDto>();
-            
+            CreateMap<Sale, SaleDetailsDto>();
+            CreateMap<SaleItem, SaleItemDetailsDto>();
         }
     }
 }

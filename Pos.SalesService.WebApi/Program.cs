@@ -5,6 +5,7 @@ using Pos.SalesService.WebApi.Extensions;
 using Pos.SalesService.WebApi.MiddleWares;
 using Pos.SalesService.WebApi.Services;
 using Serilog;
+using Pos.SalesService.Infrastructure.Shared;
 using Pos.SalesService.WebApi.Policies;
 
 namespace Pos.SalesService.WebApi
@@ -35,7 +36,7 @@ namespace Pos.SalesService.WebApi
 
             builder.Services.AddPersistenceServices(builder.Configuration);
 
-            //builder.Services.AddSharedInfrastructureServices(builder.Configuration);
+            builder.Services.AddSharedInfrastructure();
 
             builder.Services.AddApplicationLayer(builder.Configuration);
 

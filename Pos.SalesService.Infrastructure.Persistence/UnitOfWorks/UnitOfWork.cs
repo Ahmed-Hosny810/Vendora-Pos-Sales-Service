@@ -21,21 +21,5 @@ public class UnitOfWork : IUnitOfWork
         {
             throw new ConcurrencyConflictException("The record changed while saving.", exception);
         }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is SqlException sql &&
-            (sql.Number == 2601 || sql.Number == 2627) &&
-            sql.Message.Contains("IX_PaymentMethods_TenantId_Code", StringComparison.Ordinal))
-        {
-            throw new DuplicatePaymentMethodCodeException(
-                "A payment method with this code already exists.", exception);
-        }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is SqlException sql &&
-            (sql.Number == 2601 || sql.Number == 2627) &&
-            sql.Message.Contains("IX_Customers_TenantId_Phone", StringComparison.Ordinal))
-        {
-            throw new DuplicateCustomerPhoneException(
-                "A customer with this phone number already exists.", exception);
-        }
     }
 }

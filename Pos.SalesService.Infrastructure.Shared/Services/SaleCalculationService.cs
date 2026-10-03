@@ -82,25 +82,29 @@ namespace Pos.SalesService.Infrastructure.Shared.Services
 
                 var itemsSharesByDiscountId = new Dictionary<Guid, List<ItemDiscountShare>>();
 
-                // 3. Apply item-level discounts.
-                var itemDiscountResult = ApplyItemDiscounts(
+                if (input.Discounts.Count > 0)
+                {
+                    // 3. Apply item-level discounts.
+                    var itemDiscountResult = ApplyItemDiscounts(
                     input.Discounts,
                     currentAmountByItemId,
                     itemsSharesByDiscountId);
 
-                if (itemDiscountResult.IsFailure)
-                    return Result<SaleCalculationResult>.Failure(itemDiscountResult.Errors.ToArray());
+                    if (itemDiscountResult.IsFailure)
+                        return Result<SaleCalculationResult>.Failure(itemDiscountResult.Errors.ToArray());
 
-                // 4. Allocate and apply whole-sale discounts.
-                var saleDiscountResult = ApplySaleDiscounts(
-                    input.Items,
-                    input.Discounts,
-                    currentAmountByItemId,
-                    itemsSharesByDiscountId);
+                    // 4. Allocate and apply whole-sale discounts.
+                    var saleDiscountResult = ApplySaleDiscounts(
+                        input.Items,
+                        input.Discounts,
+                        currentAmountByItemId,
+                        itemsSharesByDiscountId);
 
-                if (saleDiscountResult.IsFailure)
-                    return Result<SaleCalculationResult>.Failure(
-                        saleDiscountResult.Errors.ToArray());
+                    if (saleDiscountResult.IsFailure)
+                        return Result<SaleCalculationResult>.Failure(
+                            saleDiscountResult.Errors.ToArray());
+
+                }
 
                 // 5. Calculate tax and final item amounts.
                 var itemResults = CalculateItemTaxes(
