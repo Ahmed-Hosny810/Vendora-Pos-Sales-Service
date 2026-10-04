@@ -1,3 +1,5 @@
+using Pos.SalesService.Application.Features.PaymentMethods.DTOs;
+using Pos.SalesService.Application.Wrappers;
 using Asp.Versioning;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -20,33 +22,33 @@ public class PaymentMethodsController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = SalesPolicies.ViewSales)]
-    public async Task<IActionResult> GetAll([FromQuery] GetPaymentMethodsQuery query, CancellationToken cancellationToken)
+    public async Task<ActionResult<PagedResponse<IEnumerable<PaymentMethodDto>>>> GetAll([FromQuery] GetPaymentMethodsQuery query, CancellationToken cancellationToken)
         => Ok(await _mediator.Send(query, cancellationToken));
 
     [HttpGet("{id:guid}")]
     [Authorize(Policy = SalesPolicies.ViewSales)]
-    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<Response<PaymentMethodDto>>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetPaymentMethodByIdQuery { PaymentMethodId = id }, cancellationToken);
-        return result.IsSuccess ? Ok(result) : NotFound(result);
+        return result.IsSuccess ? Ok(new Response<PaymentMethodDto>(data: result.Value!)) : NotFound(new Response<PaymentMethodDto>(message: string.Join(", ", result.Errors)) { Errors = result.Errors.ToList() });
     }
 
     [HttpPost]
     [Authorize(Policy = SalesPolicies.ManagePaymentMethods)]
-    public async Task<IActionResult> Create([FromBody] CreatePaymentMethodCommand command, CancellationToken cancellationToken)
+    public async Task<ActionResult<Response<Guid>>> Create([FromBody] CreatePaymentMethodCommand command, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(command, cancellationToken);
-        return result.IsSuccess ? StatusCode(StatusCodes.Status201Created, result) : BadRequest(result);
+        return result.IsSuccess ? StatusCode(StatusCodes.Status201Created, new Response<Guid>(data: result.Value!)) : BadRequest(new Response<Guid>(message: string.Join(", ", result.Errors)) { Errors = result.Errors.ToList() });
     }
 
     [HttpPut("{id:guid}")]
     [Authorize(Policy = SalesPolicies.ManagePaymentMethods)]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePaymentMethodCommand command,
+    public async Task<ActionResult<Response<Guid>>> Update(Guid id, [FromBody] UpdatePaymentMethodCommand command,
         CancellationToken cancellationToken)
     {
         if (id != command.PaymentMethodId)
-            return BadRequest("Route ID must match PaymentMethodId.");
+            return BadRequest(new Response<Guid>(message: "Route ID must match PaymentMethodId."));
         var result = await _mediator.Send(command, cancellationToken);
-        return result.IsSuccess ? Ok(result) : BadRequest(result);
+        return result.IsSuccess ? Ok(new Response<Guid>(data: result.Value!)) : BadRequest(new Response<Guid>(message: string.Join(", ", result.Errors)) { Errors = result.Errors.ToList() });
     }
 }

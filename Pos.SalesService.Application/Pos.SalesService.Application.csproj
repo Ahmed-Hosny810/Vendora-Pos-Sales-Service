@@ -9,7 +9,6 @@
   <ItemGroup>
     <Folder Include="Features\CashierShifts\DTOs\" />
     <Folder Include="Features\CashierShifts\Queries\" />
-    <Folder Include="Features\Sales\Queries\" />
     <Folder Include="Settings\" />
   </ItemGroup>
 

@@ -17,6 +17,8 @@ namespace Pos.SalesService.Application.Mapping
             CreateMap<CashierShift, CashierShiftDto>();
             CreateMap<PaymentMethod, PaymentMethodDto>();
             CreateMap<Sale, SaleDetailsDto>();
+            CreateMap<Sale, SaleSummaryDto>();
+            CreateMap<SaleStatusHistory, SaleStatusHistoryDto>();
             CreateMap<SaleItem, SaleItemDetailsDto>();
         }
     }

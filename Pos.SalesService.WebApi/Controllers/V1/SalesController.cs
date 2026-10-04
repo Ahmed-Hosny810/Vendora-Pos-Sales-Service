@@ -1,3 +1,8 @@
+using Pos.SalesService.Application.Features.Sales.DTOs.Receipts;
+using Pos.SalesService.Application.Features.Sales.DTOs;
+using Pos.SalesService.Application.Features.Sales.Queries.GetSalesQuery;
+using Pos.SalesService.Application.Features.Sales.Queries.GetStatusHistoryQuery;
+using Pos.SalesService.Application.Features.Sales.Queries.GetReceiptQuery;
 using Asp.Versioning;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -33,17 +38,46 @@ namespace Pos.SalesService.WebApi.Controllers.V1
         }
 
 
+        [HttpGet]
+        [Authorize(Policy = SalesPolicies.ViewSales)]
+        public async Task<ActionResult<PagedResponse<IEnumerable<SaleSummaryDto>>>> GetSales([FromQuery] GetSalesQuery query, CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(query, cancellationToken);
+            return result.IsSuccess ? Ok(result.Value) : BadRequest(new Response<IEnumerable<SaleSummaryDto>>(message: string.Join(", ", result.Errors)) { Errors = result.Errors.ToList() });
+        }
+
+        [HttpGet("{id:guid}/status-history")]
+        [Authorize(Policy = SalesPolicies.ViewSales)]
+        public async Task<ActionResult<PagedResponse<IEnumerable<SaleStatusHistoryDto>>>> GetStatusHistory(Guid id,
+            [FromQuery] GetSaleStatusHistoryQueryParameter parameter, CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(new GetSaleStatusHistoryQuery
+            {
+                SaleId = id,
+                Parameter = parameter
+            }, cancellationToken);
+            return result.IsSuccess ? Ok(result.Value) : NotFound(new Response<IEnumerable<SaleStatusHistoryDto>>(message: string.Join(", ", result.Errors)) { Errors = result.Errors.ToList() });
+        }
+
+        [HttpGet("{id:guid}/receipt")]
+        [Authorize(Policy = SalesPolicies.ViewReceipts)]
+        public async Task<ActionResult<Response<SaleReceiptDto>>> GetReceipt(Guid id, CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(new GetSaleReceiptQuery { SaleId = id }, cancellationToken);
+            return result.IsSuccess ? Ok(new Response<SaleReceiptDto>(data: result.Value!)) : NotFound(new Response<SaleReceiptDto>(message: string.Join(", ", result.Errors)) { Errors = result.Errors.ToList() });
+        }
+
         [HttpGet("{id:guid}")]
         [Authorize(Policy = SalesPolicies.ViewSales)]
-        public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
+        public async Task<ActionResult<Response<SaleDetailsDto>>> GetById(Guid id, CancellationToken cancellationToken)
         {
             var result = await _mediator.Send(new GetSaleByIdQuery { SaleId = id }, cancellationToken);
-            return result.IsSuccess ? Ok(result) : NotFound(result);
+            return result.IsSuccess ? Ok(new Response<SaleDetailsDto>(data: result.Value!)) : NotFound(new Response<SaleDetailsDto>(message: string.Join(", ", result.Errors)) { Errors = result.Errors.ToList() });
         }
 
         [HttpPut("draft")]
         [Authorize(Policy = SalesPolicies.EditSales)]
-        public async Task<IActionResult> UpdateDraft([FromBody] UpdateSaleDraftCommand command,CancellationToken cancellationToken)
+        public async Task<ActionResult<Response<Guid>>> UpdateDraft([FromBody] UpdateSaleDraftCommand command,CancellationToken cancellationToken)
         {
             var result = await _mediator.Send(command, cancellationToken);
 

@@ -1,3 +1,5 @@
+using Pos.SalesService.Application.Features.CashierShifts.DTOs;
+using Pos.SalesService.Application.Wrappers;
 using Asp.Versioning;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -19,21 +21,21 @@ public class CashierShiftsController : ControllerBase
     public CashierShiftsController(IMediator mediator) { _mediator = mediator; }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] GetCashierShiftsQuery query,
+    public async Task<ActionResult<PagedResponse<IEnumerable<CashierShiftDto>>>> GetAll([FromQuery] GetCashierShiftsQuery query,
         CancellationToken cancellationToken)
         => Ok(await _mediator.Send(query, cancellationToken));
 
     [HttpGet("current")]
-    public async Task<IActionResult> GetCurrent(CancellationToken cancellationToken)
+    public async Task<ActionResult<Response<CashierShiftDto>>> GetCurrent(CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetCurrentCashierShiftQuery(), cancellationToken);
-        return result.IsSuccess ? Ok(result) : NotFound(result);
+        return result.IsSuccess ? Ok(new Response<CashierShiftDto>(data: result.Value!)) : NotFound(new Response<CashierShiftDto>(message: string.Join(", ", result.Errors)) { Errors = result.Errors.ToList() });
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<Response<CashierShiftDto>>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetCashierShiftByIdQuery { ShiftId = id }, cancellationToken);
-        return result.IsSuccess ? Ok(result) : NotFound(result);
+        return result.IsSuccess ? Ok(new Response<CashierShiftDto>(data: result.Value!)) : NotFound(new Response<CashierShiftDto>(message: string.Join(", ", result.Errors)) { Errors = result.Errors.ToList() });
     }
 }

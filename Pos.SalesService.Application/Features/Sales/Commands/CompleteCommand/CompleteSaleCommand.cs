@@ -193,7 +193,7 @@ namespace Pos.SalesService.Application.Features.Sales.Commands.CompleteCommand
             // event in one local save. Receipt retries do not repeat Inventory
             // consumption, and the event cannot be published without the sale
             // actually completing, since both commit in the same transaction.
-            return await _saleRepository.FinalizeWithReceiptAsync(tenantId.Value, sale.Id, userId, cancellationToken);
+            return await _saleRepository.IssueReceiptAsync(tenantId.Value, sale.Id, userId, cancellationToken);
         }
     }
 }

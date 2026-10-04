@@ -1,5 +1,9 @@
+using Pos.SalesService.Application.Features.Sales.Queries.GetSalesQuery;
+using Pos.SalesService.Application.Features.Sales.Queries.GetStatusHistoryQuery;
+using Pos.SalesService.Infrastructure.Persistence.QueryExtensions;
 using Microsoft.EntityFrameworkCore;
 using Pos.SalesService.Application.Exceptions;
+using Pos.SalesService.Application.Features.Sales.DTOs.Receipts;
 using Pos.SalesService.Application.Interfaces;
 using Pos.SalesService.Application.Interfaces.Repositories;
 using Pos.SalesService.Application.Wrappers;
@@ -19,6 +23,36 @@ namespace Pos.SalesService.Infrastructure.Persistence.Repositories
         {
             _context = context;
             _unitOfWork = unitOfWork;
+        }
+
+        public Task<bool> ExistsAsync(Guid tenantId, Guid saleId, CancellationToken cancellationToken)
+            => _context.Sales.AnyAsync(s => s.TenantId == tenantId && s.Id == saleId, cancellationToken);
+
+        public async Task<PagedResponse<IEnumerable<Sale>>> GetSalesPagedAsync(Guid tenantId, SaleFilter? filter,
+            SaleOrderKey orderKey, bool descending, int pageNumber, int pageSize, CancellationToken cancellationToken)
+        {
+            pageNumber = Math.Max(1, pageNumber);
+            pageSize = pageSize <= 0 ? 10 : Math.Min(pageSize, 50);
+            var query = _context.Sales.AsNoTracking().ApplyFilter(tenantId, filter);
+            var count = await query.CountAsync(cancellationToken);
+            var offset = ((long)pageNumber - 1) * pageSize;
+            var rows = offset >= count ? new List<Sale>() :
+                await query.ApplyOrdering(orderKey, descending).Skip((int)offset).Take(pageSize).ToListAsync(cancellationToken);
+            return new PagedResponse<IEnumerable<Sale>>(rows, pageNumber, pageSize, count);
+        }
+
+        public async Task<PagedResponse<IEnumerable<SaleStatusHistory>>> GetSaleStatusHistoryPagedAsync(
+            Guid tenantId, Guid saleId, SaleStatusHistoryFilter? filter, SaleStatusHistoryOrderKey orderKey,
+            bool descending, int pageNumber, int pageSize, CancellationToken cancellationToken)
+        {
+            pageNumber = Math.Max(1, pageNumber);
+            pageSize = pageSize <= 0 ? 10 : Math.Min(pageSize, 50);
+            var query = _context.SaleStatusHistory.AsNoTracking().ApplyFilter(tenantId, saleId, filter);
+            var count = await query.CountAsync(cancellationToken);
+            var offset = ((long)pageNumber - 1) * pageSize;
+            var rows = offset >= count ? new List<SaleStatusHistory>() :
+                await query.ApplyOrdering(orderKey, descending).Skip((int)offset).Take(pageSize).ToListAsync(cancellationToken);
+            return new PagedResponse<IEnumerable<SaleStatusHistory>>(rows, pageNumber, pageSize, count);
         }
 
         public async Task<Sale?> GetByIdempotencyKeyAsync(Guid tenantId, Guid idempotencyKey, CancellationToken cancellationToken)
@@ -87,7 +121,7 @@ namespace Pos.SalesService.Infrastructure.Persistence.Repositories
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<Result<Guid>> FinalizeWithReceiptAsync(Guid tenantId,Guid saleId,Guid userId,CancellationToken cancellationToken)
+        public async Task<Result<Guid>> IssueReceiptAsync(Guid tenantId,Guid saleId,Guid userId,CancellationToken cancellationToken)
         {
             const int maxAttempts = 3;
 
@@ -109,22 +143,22 @@ namespace Pos.SalesService.Infrastructure.Persistence.Repositories
                 if (sale.Status != SaleStatus.Completing)
                     return Result<Guid>.Failure("The sale is no longer awaiting completion.");
 
-                var sequence = await _context.ReceiptSequences.SingleOrDefaultAsync(
+                var receiptSequence = await _context.ReceiptSequences.SingleOrDefaultAsync(
                     s => s.TenantId == tenantId &&
                          s.BranchId == sale.BranchId &&
                          s.DocumentType == ReceiptDocumentType.Sale,
                     cancellationToken);
 
-                if (sequence == null)
+                if (receiptSequence == null)
                     return Result<Guid>.Failure(
                         "Configure a sale receipt sequence for this branch, then retry completion.");
 
-                if (sequence.LastNumber == long.MaxValue)
+                if (receiptSequence.LastNumber == long.MaxValue)
                     return Result<Guid>.Failure("The receipt sequence has reached its limit.");
 
-                sequence.LastNumber++;
+                receiptSequence.LastNumber++;
 
-                var receiptNumber = $"{sequence.Prefix}-{sequence.LastNumber:D8}";
+                var receiptNumber = $"{receiptSequence.Prefix}-{receiptSequence.LastNumber:D8}";
 
                 var now = DateTime.UtcNow;
 
@@ -185,6 +219,52 @@ namespace Pos.SalesService.Infrastructure.Persistence.Repositories
             return Result<Guid>.Failure(
                 "The receipt could not be allocated because of concurrent updates. " +
                 "Retry completion; do not collect payment again.");
+        }
+
+        public async Task<SaleReceiptDto?> GetSaleReceiptAsync(Guid tenantId, Guid saleId, CancellationToken cancellationToken)
+        {
+            return await _context.Sales
+                .AsNoTracking()
+                .Where(s => s.TenantId == tenantId && s.Id == saleId &&
+                    s.ReceiptNumber != null && s.ReceiptNumber != "" && s.CompletedAt.HasValue &&
+                    (s.Status == SaleStatus.Completed ||
+                     s.Status == SaleStatus.PartiallyReturned || s.Status == SaleStatus.Returned))
+                .Select(s => new SaleReceiptDto
+                {
+                    SaleId = s.Id,
+                    ReceiptNumber = s.ReceiptNumber!,
+                    CompletedAt = s.CompletedAt!.Value,
+                    BranchId= s.BranchId,
+                    CustomerNameSnapshot = s.CustomerNameSnapshot,
+                    CustomerPhoneSnapshot = s.CustomerPhoneSnapshot,
+                    Subtotal = s.Subtotal,
+                    DiscountTotal = s.DiscountTotal,
+                    TaxTotal = s.TaxTotal,
+                    Total = s.Total,
+                    PaidAmount = s.PaidAmount,
+                    ChangeAmount = s.ChangeAmount,
+                    Items = s.Items.OrderBy(i => i.ItemNumber).ThenBy(i => i.Id).Select(i => new SaleReceiptItemDto
+                    {
+                        ProductNameSnapshot = i.ProductNameSnapshot,
+                        VariantNameSnapshot = i.VariantNameSnapshot,
+                        Quantity = i.Quantity,
+                        UnitNameSnapshot = i.UnitNameSnapshot,
+                        UnitPrice = i.UnitPrice,
+                        DiscountAmount = i.DiscountAmount,
+                        TaxAmount = i.TaxAmount,
+                        LineTotal = i.LineTotal
+                    }).ToList(),
+                    Payments = s.Payments.Where(p => p.Status == PaymentStatus.Completed)
+                        .OrderBy(p => p.CreatedAt).ThenBy(p => p.Id).Select(p => new SaleReceiptPaymentDto
+                    {
+                        PaymentMethodNameSnapshot = p.PaymentMethodNameSnapshot,
+                        IsCashSnapshot = p.IsCashSnapshot,
+                        Amount = p.Amount,
+                        ChangeAmount = p.ChangeAmount,
+                        ReferenceNumber = p.ReferenceNumber
+                    }).ToList()
+                })
+                .SingleOrDefaultAsync(cancellationToken);
         }
     }
 }
