@@ -17,6 +17,7 @@ public class SaleReturnItemConfiguration : IEntityTypeConfiguration<SaleReturnIt
         builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.StockCondition).HasMaxLength(50).IsRequired();
         builder.Property(x => x.RefundAmount).HasPrecision(18, 2);
+        builder.Property(x => x.TaxAmount).HasPrecision(18, 2);
         builder.Property(x => x.Quantity).HasPrecision(18, 3);
         builder.Property(x => x.RowVersion).IsRowVersion();
 

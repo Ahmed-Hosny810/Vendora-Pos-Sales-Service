@@ -221,17 +221,12 @@ namespace Pos.SalesService.Infrastructure.Shared.Services
                 return Result<ReturnCalculationResult>.Failure("The return must contain at least one item.");
 
             var returnItemIds = new HashSet<Guid>();
-            var originalSaleItemIds = new HashSet<Guid>();
 
             foreach (var item in input.Items)
             {
                 if (item == null || item.ReturnItemId == Guid.Empty ||
                     item.OriginalSaleItemId == Guid.Empty || !returnItemIds.Add(item.ReturnItemId))
                     return Result<ReturnCalculationResult>.Failure("Return items must have unique, non-empty IDs and an original sale item.");
-
-                if (!originalSaleItemIds.Add(item.OriginalSaleItemId))
-                    return Result<ReturnCalculationResult>.Failure(
-                        "Each original sale item can appear only once in a return request.");
 
                 var validation = ValidateReturnItem(item);
 
@@ -244,40 +239,62 @@ namespace Pos.SalesService.Infrastructure.Shared.Services
                 var itemResults = new List<ReturnItemCalculationResult>();
 
                 // 2. Calculate the remaining quantity and refundable amounts for each item.
-                foreach (var item in input.Items)
+                foreach (var group in input.Items.GroupBy(x => x.OriginalSaleItemId))
                 {
-                    var quantityAvailableToReturn = item.OriginalQuantity - item.PreviouslyReturnedQuantity;
+                    var original = group.First();
+                    if (group.Any(x => x.OriginalQuantity != original.OriginalQuantity ||
+                        x.OriginalLineTotal != original.OriginalLineTotal ||
+                        x.OriginalTaxAmount != original.OriginalTaxAmount ||
+                        x.PreviouslyReturnedQuantity != original.PreviouslyReturnedQuantity ||
+                        x.PreviouslyReturnedAmount != original.PreviouslyReturnedAmount ||
+                        x.PreviouslyReturnedTaxAmount != original.PreviouslyReturnedTaxAmount))
+                        return Result<ReturnCalculationResult>.Failure("Entries for one original item must use the same saved amounts.");
 
-                    if (item.QuantityToReturn > quantityAvailableToReturn)
+                    if (group.Sum(x => x.QuantityToReturn) > original.OriginalQuantity - original.PreviouslyReturnedQuantity)
                         return Result<ReturnCalculationResult>.Failure("The requested quantity exceeds the remaining returnable quantity.");
 
-                    var originalAmountExcludingTax = item.OriginalLineTotal - item.OriginalTaxAmount;
-
-                    var netAmountAvailableToRefund = originalAmountExcludingTax - (item.PreviouslyReturnedAmount - item.PreviouslyReturnedTaxAmount);
-
-                    var taxAmountAvailableToRefund = item.OriginalTaxAmount - item.PreviouslyReturnedTaxAmount;
-
-                    // 3. Refund the proportional amounts, or all remaining amounts for the final quantity.
-                    var returnsAllRemainingQuantity = item.QuantityToReturn == quantityAvailableToReturn;
-                    var returnedShareOfOriginalQuantity = item.QuantityToReturn / item.OriginalQuantity;
-
-                    var netRefundAmount = returnsAllRemainingQuantity
-                        ? netAmountAvailableToRefund
-                        : Math.Min(CurrencyRounding.Round(originalAmountExcludingTax * returnedShareOfOriginalQuantity), netAmountAvailableToRefund);
-
-                    var taxRefundAmount = returnsAllRemainingQuantity
-                        ? taxAmountAvailableToRefund
-                        : Math.Min(CurrencyRounding.Round(item.OriginalTaxAmount * returnedShareOfOriginalQuantity), taxAmountAvailableToRefund);
-
-                    itemResults.Add(new ReturnItemCalculationResult
+                    var allocatedQuantity = original.PreviouslyReturnedQuantity;
+                    var allocatedAmount = original.PreviouslyReturnedAmount;
+                    var allocatedTax = original.PreviouslyReturnedTaxAmount;
+                    // The caller supplies canonical condition/restock order.
+                    foreach (var item in group)
                     {
-                        ReturnItemId = item.ReturnItemId,
-                        OriginalSaleItemId = item.OriginalSaleItemId,
-                        Quantity = item.QuantityToReturn,
-                        NetAmount = netRefundAmount,
-                        TaxAmount = taxRefundAmount,
-                        RefundAmount = netRefundAmount + taxRefundAmount
-                    });
+                        var quantityAvailableToReturn = item.OriginalQuantity - allocatedQuantity;
+
+                        if (item.QuantityToReturn > quantityAvailableToReturn)
+                            return Result<ReturnCalculationResult>.Failure("The requested quantity exceeds the remaining returnable quantity.");
+
+                        var originalAmountExcludingTax = item.OriginalLineTotal - item.OriginalTaxAmount;
+
+                        var netAmountAvailableToRefund = originalAmountExcludingTax - (allocatedAmount - allocatedTax);
+
+                        var taxAmountAvailableToRefund = item.OriginalTaxAmount - allocatedTax;
+
+                        // 3. Refund the proportional amounts, or all remaining amounts for the final quantity.
+                        var returnsAllRemainingQuantity = item.QuantityToReturn == quantityAvailableToReturn;
+                        var returnedShareOfOriginalQuantity = item.QuantityToReturn / item.OriginalQuantity;
+
+                        var netRefundAmount = returnsAllRemainingQuantity
+                            ? netAmountAvailableToRefund
+                            : Math.Min(CurrencyRounding.Round(originalAmountExcludingTax * returnedShareOfOriginalQuantity), netAmountAvailableToRefund);
+
+                        var taxRefundAmount = returnsAllRemainingQuantity
+                            ? taxAmountAvailableToRefund
+                            : Math.Min(CurrencyRounding.Round(item.OriginalTaxAmount * returnedShareOfOriginalQuantity), taxAmountAvailableToRefund);
+
+                        itemResults.Add(new ReturnItemCalculationResult
+                        {
+                            ReturnItemId = item.ReturnItemId,
+                            OriginalSaleItemId = item.OriginalSaleItemId,
+                            Quantity = item.QuantityToReturn,
+                            NetAmount = netRefundAmount,
+                            TaxAmount = taxRefundAmount,
+                            RefundAmount = netRefundAmount + taxRefundAmount
+                        });
+                        allocatedQuantity += item.QuantityToReturn;
+                        allocatedAmount += netRefundAmount + taxRefundAmount;
+                        allocatedTax += taxRefundAmount;
+                    }
                 }
                 // 4. Sum the calculated items so all return totals reconcile.
                 var result = new ReturnCalculationResult

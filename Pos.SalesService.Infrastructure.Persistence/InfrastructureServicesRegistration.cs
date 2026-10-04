@@ -29,6 +29,8 @@ namespace Pos.SalesService.Infrastructure.Persistence
 
             services.AddScoped<ICustomerRepositoryAsync, CustomerRepositoryAsync>();
             services.AddScoped<ISaleRepositoryAsync, SaleRepositoryAsync>();
+            services.AddScoped<ISaleReturnRepositoryAsync, SaleReturnRepositoryAsync>();
+            services.AddScoped<Pos.SalesService.Application.Features.SalesReturns.Services.SaleReturnService>();
             services.AddScoped<ISalePaymentRepositoryAsync, SalePaymentRepositoryAsync>();
             services.AddScoped<Pos.SalesService.Application.Features.SalePayments.Services.SalePaymentWorkflow>();
             services.AddScoped<ICashierShiftRepositoryAsync, CashierShiftRepositoryAsync>();

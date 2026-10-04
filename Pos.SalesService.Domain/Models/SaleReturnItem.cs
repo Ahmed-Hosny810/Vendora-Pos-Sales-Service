@@ -10,6 +10,8 @@ public class SaleReturnItem : SalesEntity
     public Guid? ProductVariantId { get; set; }
     public decimal Quantity { get; set; }
     public decimal RefundAmount { get; set; }
+    // Tax included in RefundAmount, retained for subsequent partial-return calculations.
+    public decimal TaxAmount { get; set; }
     public bool Restock { get; set; }
     public string StockCondition { get; set; } = Constants.StockCondition.Sellable;
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
