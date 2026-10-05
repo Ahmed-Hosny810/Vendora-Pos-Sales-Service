@@ -21,6 +21,9 @@ public class SaleReturnService
 
     public async Task<Result<SaleReturn>> PrepareAsync(Guid tenantId, Guid saleId, Guid returnId, IReadOnlyList<SaleReturnItemInput> inputs, CancellationToken cancellationToken)
     {
+        if (inputs == null || inputs.Count == 0 || inputs.Any(x => x == null))
+            return Result<SaleReturn>.Failure("At least one valid return item is required.");
+
         var sale = await _returnRepository.GetOriginalSaleAsync(tenantId, saleId, cancellationToken);
 
         if (sale == null)
@@ -29,8 +32,7 @@ public class SaleReturnService
         if (sale.Status != SaleStatus.Completed && sale.Status != SaleStatus.PartiallyReturned)
             return Result<SaleReturn>.Failure("Only completed or partially returned sales can be returned.");
 
-        // Reject duplicate references before processing 
-        // Each original item can only be returned once per request.
+        // Reject duplicate ,each original item can only be returned once per request.
         var duplicateIds = inputs
             .GroupBy(x => x.OriginalSaleItemId)
             .Where(g => g.Count() > 1)
@@ -41,23 +43,29 @@ public class SaleReturnService
             return Result<SaleReturn>.Failure("Each original sale item can appear only once in a return request.");
 
         var originalItems = sale.Items.ToDictionary(x => x.Id);
+
         var returnCalculationInput = new ReturnCalculationInput();
+
         var prepared = new SaleReturn
         {
             Id = returnId,
             TenantId = tenantId,
             OriginalSaleId = sale.Id,
-            BranchId = sale.BranchId
+            BranchId = sale.BranchId,
+            OriginalSale = sale
         };
 
-        // Canonical ordering by the original item's position on the sale (ItemNumber)
-        // makes rounding allocations deterministic and matches receipt order —
-        // unlike OriginalSaleItemId, which is a random GUID with no inherent order.
+        // Ordering by the original item's position on the sale (ItemNumber)
         foreach (var input in inputs.OrderBy(x => originalItems.TryGetValue(x.OriginalSaleItemId, out var item) ? item.ItemNumber : int.MaxValue)
                      .ThenBy(x => x.StockCondition, StringComparer.Ordinal).ThenBy(x => x.Restock))
         {
             if (!originalItems.TryGetValue(input.OriginalSaleItemId, out var originalItem))
                 return Result<SaleReturn>.Failure("Every returned item must belong to the original sale.");
+
+            if (input.StockCondition != StockCondition.Sellable &&
+                input.StockCondition != StockCondition.Damaged &&
+                input.StockCondition != StockCondition.Expired)
+                return Result<SaleReturn>.Failure("Invalid stock condition.");
 
             if (input.Restock && (!originalItem.TrackInventorySnapshot || input.StockCondition != StockCondition.Sellable))
                 return Result<SaleReturn>.Failure("Only sellable inventory-tracked items can be restocked.");

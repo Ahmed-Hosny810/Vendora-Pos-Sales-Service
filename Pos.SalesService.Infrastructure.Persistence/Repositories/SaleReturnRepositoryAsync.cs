@@ -10,10 +10,64 @@ using Pos.SalesService.Infrastructure.Persistence.QueryExtensions;
 
 namespace Pos.SalesService.Infrastructure.Persistence.Repositories;
 
+using Pos.SalesService.Application.Features.SalesReturns.DTOs.Receipts;
+
 public class SaleReturnRepositoryAsync : GenericRepositoryAsync<SaleReturn, Guid>, ISaleReturnRepositoryAsync
 {
     private readonly ApplicationDbContext _context;
-    public SaleReturnRepositoryAsync(ApplicationDbContext context) : base(context) { _context = context; }
+
+    public SaleReturnRepositoryAsync(ApplicationDbContext context) : base(context) 
+    {
+        _context = context;
+    }
+
+
+    public Task<SaleReturnReceiptDto?> GetSaleReturnReceiptAsync(
+        Guid tenantId, Guid returnId, CancellationToken cancellationToken)
+    {
+        return _context.Returns
+            .AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.Id == returnId)
+            .Select(x => new SaleReturnReceiptDto
+            {
+                ReturnId = x.Id,
+                ReturnNumber = x.ReturnNumber,
+                CompletedAt = x.CompletedAt,
+                OriginalSaleId = x.OriginalSaleId,
+                OriginalReceiptNumber = x.OriginalSale.ReceiptNumber,
+                BranchId = x.BranchId,
+                CurrencyCode = x.OriginalSale.CurrencyCode,
+                CustomerNameSnapshot = x.OriginalSale.CustomerNameSnapshot,
+                CustomerPhoneSnapshot = x.OriginalSale.CustomerPhoneSnapshot,
+                Reason = x.Reason,
+                RefundAmount = x.RefundAmount,
+                Items = x.Items.OrderBy(i => i.OriginalSaleItem.ItemNumber).ThenBy(i => i.Id)
+                    .Select(i => new SaleReturnReceiptItemDto
+                    {
+                        OriginalItemNumber = i.OriginalSaleItem.ItemNumber,
+                        ProductNameSnapshot = i.OriginalSaleItem.ProductNameSnapshot,
+                        VariantNameSnapshot = i.OriginalSaleItem.VariantNameSnapshot,
+                        UnitNameSnapshot = i.OriginalSaleItem.UnitNameSnapshot,
+                        Quantity = i.Quantity,
+                        StockCondition = i.StockCondition,
+                        Restock = i.Restock,
+                        TaxAmount = i.TaxAmount,
+                        RefundAmount = i.RefundAmount
+                    }).ToList(),
+                Payments = x.RefundPayments.Where(p => p.Status == PaymentStatus.Completed)
+                    .OrderBy(p => p.PaidAt).ThenBy(p => p.Id)
+                    .Select(p => new SaleReturnReceiptPaymentDto
+                    {
+                        PaymentMethodNameSnapshot = p.PaymentMethodNameSnapshot,
+                        PaymentMethodCodeSnapshot = p.PaymentMethodCodeSnapshot,
+                        IsCashSnapshot = p.IsCashSnapshot,
+                        Amount = p.Amount,
+                        ReferenceNumber = p.ReferenceNumber,
+                        PaidAt = p.PaidAt
+                    }).ToList()
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+    }
 
     public Task<SaleReturn?> GetByIdAsync(Guid tenantId, Guid returnId, CancellationToken cancellationToken)
     {
@@ -24,10 +78,9 @@ public class SaleReturnRepositoryAsync : GenericRepositoryAsync<SaleReturn, Guid
     public Task<Sale?> GetOriginalSaleAsync(Guid tenantId, Guid saleId, CancellationToken cancellationToken)
     {
         
-        return _context.Sales.AsNoTracking()
+        return _context.Sales
             .Include(x => x.Items)
-            .ThenInclude(x => x.ReturnItems.Where(r => r.Return.Status == SaleReturnStatus.Completed))
-            .AsSplitQuery()
+            .ThenInclude(x => x.ReturnItems)
             .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == saleId, cancellationToken);
     }
 
@@ -56,10 +109,8 @@ public class SaleReturnRepositoryAsync : GenericRepositoryAsync<SaleReturn, Guid
                         ReturnedQuantity = x.ReturnedQuantity,
                         RemainingQuantity = x.Quantity - x.ReturnedQuantity,
                         RemainingRefundAmount = x.LineTotal - (x.ReturnItems
-                            .Where(r => r.Return.Status == SaleReturnStatus.Completed)
                             .Sum(r => (decimal?)r.RefundAmount) ?? 0m),
                         RemainingTaxAmount = x.TaxAmount - (x.ReturnItems
-                            .Where(r => r.Return.Status == SaleReturnStatus.Completed)
                             .Sum(r => (decimal?)r.TaxAmount) ?? 0m)
                     }).ToList()
             })
@@ -84,19 +135,17 @@ public class SaleReturnRepositoryAsync : GenericRepositoryAsync<SaleReturn, Guid
         return new PagedResponse<IEnumerable<SaleReturn>>(items, pageNumber, pageSize, count);
     }
 
-    public void ReplaceItems(SaleReturn saleReturn, IReadOnlyList<SaleReturnItem> items)
+    public void MarkOriginalSaleUpdated(Sale sale)
     {
-        _context.ReturnItems.RemoveRange(saleReturn.Items);
-        saleReturn.Items.Clear();
-
-        foreach (var item in items)
-            saleReturn.Items.Add(item);
+        // Serialize returns even when different sale items are being returned.
+        sale.UpdatedAt = DateTime.UtcNow;
+        _context.Entry(sale).Property(x => x.UpdatedAt).IsModified = true;
     }
 
-    public void MarkUpdated(SaleReturn saleReturn)
+    public async Task<SaleReturn?> GetByIdempotencyKeyAsync(Guid tenantId, Guid idempotencyKey, CancellationToken cancellationToken)
     {
-        // Item-only changes must also check and advance the draft's row version.
-        saleReturn.UpdatedAt = DateTime.UtcNow;
-        _context.Entry(saleReturn).Property(x => x.UpdatedAt).IsModified = true;
+        return await _context.Returns
+                .Include(r => r.Items)
+                .SingleOrDefaultAsync(r=>r.TenantId==tenantId && r.IdempotencyKey == idempotencyKey,cancellationToken);
     }
 }

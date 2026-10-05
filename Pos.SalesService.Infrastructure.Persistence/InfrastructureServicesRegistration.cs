@@ -36,7 +36,7 @@ namespace Pos.SalesService.Infrastructure.Persistence
             services.AddScoped<ICashierShiftRepositoryAsync, CashierShiftRepositoryAsync>();
             services.AddScoped<IPaymentMethodRepositoryAsync, PaymentMethodRepositoryAsync>();
             services.AddScoped<IReadModelsRepositoryAsync, ReadModelsRepositoryAsync>();
-
+            services.AddScoped<IRefundPaymentRepositoryAsync,RefundPaymentRepositoryAsync>();
             services.AddScoped<ISalesValidationService, SalesValidationService>();
 
             return services;

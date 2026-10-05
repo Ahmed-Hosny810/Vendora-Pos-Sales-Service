@@ -15,15 +15,13 @@ public class SaleReturnConfiguration : IEntityTypeConfiguration<SaleReturn>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.ReturnNumber).HasMaxLength(80);
-        builder.Property(x => x.Status).HasMaxLength(30).IsRequired();
         builder.Property(x => x.Reason).HasMaxLength(300).IsRequired();
         builder.Property(x => x.RefundAmount).HasPrecision(18, 2);
         builder.Property(x => x.RowVersion).IsRowVersion();
-        builder.HasIndex(x => new { x.TenantId, x.IdempotencyKey }).IsUnique()
-            .HasFilter("[IdempotencyKey] IS NOT NULL");
+        builder.HasIndex(x => new { x.TenantId, x.IdempotencyKey }).IsUnique();
 
         builder.HasIndex(x => new { x.TenantId, x.ReturnNumber }).IsUnique().HasFilter("[ReturnNumber] IS NOT NULL");
-        builder.HasIndex(x => new { x.TenantId, x.BranchId, x.CreatedAt });
+        builder.HasIndex(x => new { x.TenantId, x.BranchId, x.CompletedAt });
 
         builder.HasOne(x => x.OriginalSale).WithMany(x => x.Returns)
             .HasForeignKey(x => new { x.TenantId, x.OriginalSaleId })

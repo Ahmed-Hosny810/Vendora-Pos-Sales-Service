@@ -14,14 +14,10 @@ public class SaleReturnSummaryDto
     public Guid OriginalSaleId { get; set; }
     public Guid BranchId { get; set; }
     public string? ReturnNumber { get; set; }
-    public string Status { get; set; } = string.Empty;
     public string Reason { get; set; } = string.Empty;
     public decimal RefundAmount { get; set; }
     public Guid ProcessedByUserId { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public DateTime? CancelledAt { get; set; }
-    public DateTime? CompletedAt { get; set; }
+    public DateTime CompletedAt { get; set; }
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }
 

@@ -16,14 +16,12 @@ public static class SaleReturnQueryExtensions
             query = query.Where(x => x.BranchId == filter.BranchId.Value);
         if (filter.ProcessedByUserId.HasValue)
             query = query.Where(x => x.ProcessedByUserId == filter.ProcessedByUserId.Value);
-        if (!string.IsNullOrWhiteSpace(filter.Status))
-            query = query.Where(x => x.Status == filter.Status);
         if (!string.IsNullOrWhiteSpace(filter.ReturnNumber))
             query = query.Where(x => x.ReturnNumber == filter.ReturnNumber.Trim());
         if (filter.FromUtc.HasValue)
-            query = query.Where(x => x.CreatedAt >= filter.FromUtc.Value);
+            query = query.Where(x => x.CompletedAt >= filter.FromUtc.Value);
         if (filter.ToUtcExclusive.HasValue)
-            query = query.Where(x => x.CreatedAt < filter.ToUtcExclusive.Value);
+            query = query.Where(x => x.CompletedAt < filter.ToUtcExclusive.Value);
         return query;
     }
 
@@ -36,7 +34,7 @@ public static class SaleReturnQueryExtensions
                 ? query.OrderByDescending(x => x.RefundAmount) : query.OrderBy(x => x.RefundAmount),
             SaleReturnOrderKey.ReturnNumber => descending
                 ? query.OrderByDescending(x => x.ReturnNumber) : query.OrderBy(x => x.ReturnNumber),
-            _ => descending ? query.OrderByDescending(x => x.CreatedAt) : query.OrderBy(x => x.CreatedAt)
+            _ => descending ? query.OrderByDescending(x => x.CompletedAt) : query.OrderBy(x => x.CompletedAt)
         };
         return ordered.ThenBy(x => x.Id);
     }

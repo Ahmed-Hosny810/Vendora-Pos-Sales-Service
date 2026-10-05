@@ -12,7 +12,6 @@ public class SaleReturnFilter
     public Guid? OriginalSaleId { get; set; }
     public Guid? BranchId { get; set; }
     public Guid? ProcessedByUserId { get; set; }
-    public string? Status { get; set; }
     public string? ReturnNumber { get; set; }
     public DateTime? FromUtc { get; set; }
     public DateTime? ToUtcExclusive { get; set; }
@@ -20,7 +19,7 @@ public class SaleReturnFilter
 
 public enum SaleReturnOrderKey
 {
-    CreatedAt,
+    CompletedAt,
     RefundAmount,
     ReturnNumber
 }

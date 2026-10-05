@@ -17,10 +17,6 @@ public class GetSaleReturnsQueryValidator : AbstractValidator<GetSaleReturnsQuer
                 RuleFor(x => x.Parameter.Filter!.BranchId).Must(x => x != Guid.Empty);
                 RuleFor(x => x.Parameter.Filter!.ProcessedByUserId).Must(x => x != Guid.Empty);
                 RuleFor(x => x.Parameter.Filter!.ReturnNumber).MaximumLength(80);
-                RuleFor(x => x.Parameter.Filter!.Status).Must(x => string.IsNullOrWhiteSpace(x) ||
-                    x == SaleReturnStatus.Draft || x == SaleReturnStatus.Processing ||
-                    x == SaleReturnStatus.Completed || x == SaleReturnStatus.Cancelled)
-                    .WithMessage("Invalid return status.");
                 RuleFor(x => x.Parameter.Filter!.FromUtc).Must(x => !x.HasValue || x.Value.Kind == DateTimeKind.Utc)
                     .WithMessage("Use a UTC timestamp ending in Z.");
                 RuleFor(x => x.Parameter.Filter!.ToUtcExclusive).Must(x => !x.HasValue || x.Value.Kind == DateTimeKind.Utc)

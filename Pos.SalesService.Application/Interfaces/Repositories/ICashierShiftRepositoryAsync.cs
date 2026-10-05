@@ -8,6 +8,7 @@ namespace Pos.SalesService.Application.Interfaces.Repositories
     public interface ICashierShiftRepositoryAsync:IGenericRepositoryAsync<CashierShift,Guid>
     {
         Task<bool> HasOpenedShiftAsync(Guid tenantId, Guid cashierUserId, CancellationToken cancellationToken);
+        Task<bool> CanShiftBeClosed(Guid tenantId, Guid cashierUserId, CancellationToken cancellationToken);
         Task<CashierShift?> GetCurrentCashierShiftAsync(Guid tenantId, Guid cashierUserId, CancellationToken cancellationToken);
         Task<CashierShift?> GetCashierShiftByIdAsync(Guid tenantId, Guid shiftId, CancellationToken cancellationToken);
         Task<PagedResponse<IEnumerable<CashierShift>>> GetCashierShiftsPagedAsync(Guid tenantId,
