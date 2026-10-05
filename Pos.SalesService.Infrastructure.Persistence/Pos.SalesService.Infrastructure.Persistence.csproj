@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Contexts\" />
     <Folder Include="QueryExtensions\" />
     <Folder Include="UnitOfWorks\" />
   </ItemGroup>

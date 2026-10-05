@@ -40,7 +40,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SaleReturnItem> ReturnItems => Set<SaleReturnItem>();
     public DbSet<RefundPayment> RefundPayments => Set<RefundPayment>();
     public DbSet<SaleStatusHistory> SaleStatusHistory => Set<SaleStatusHistory>();
-
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

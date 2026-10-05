@@ -11,6 +11,7 @@ using Pos.SalesService.Domain.Constants;
 using Pos.SalesService.Domain.Models;
 using Pos.SalesService.Infrastructure.Persistence.Contexts;
 using System.Text.Json;
+using Pos.SalesService.Application.Events;
 
 namespace Pos.SalesService.Infrastructure.Persistence.Repositories
 {
@@ -181,27 +182,44 @@ namespace Pos.SalesService.Infrastructure.Persistence.Repositories
 
                 // Stage the event in the same transaction as the status change.
                 // If SaveChangesAsync below fails, this row is never committed either.
-                //var eventId = Guid.NewGuid();
+                var eventId = Guid.NewGuid();
 
-                //var saleCompletedEvent = new SaleCompleted(
-                //    eventId,
-                //    tenantId,
-                //    sale.Id,
-                //    sale.BranchId,
-                //    receiptNumber,
-                //    sale.Total,
-                //    sale.Items.Select(i => new SaleCompletedItem(
-                //        i.ProductId, i.ProductVariantId, i.Quantity, i.TrackInventorySnapshot)).ToList(),
-                //    now);
+                var saleCompletedEvent = new SaleCompleted(
+                    EventId: eventId,
+                    TenantId: tenantId,
+                    SaleId: sale.Id,
+                    TerminalId: sale.TerminalId,
+                    BranchId: sale.BranchId,
+                    StockReservationId: sale.StockReservationId,
+                    CashierUserId: userId,
+                    ReceiptNumber: receiptNumber,
+                    Subtotal: sale.Subtotal,
+                    DiscountTotal: sale.DiscountTotal,
+                    TaxTotal: sale.TaxTotal,
+                    Total: sale.Total,
+                    Items: sale.Items
+                        .OrderBy(i => i.ItemNumber)
+                        .Select(i => new SaleCompletedItem(
+                            ProductId: i.ProductId,
+                            ProductVariantId: i.ProductVariantId,
+                            Quantity: i.Quantity,
+                            UnitPrice: i.UnitPrice,
+                            UnitCost: i.UnitCost,
+                            DiscountAmount: i.DiscountAmount,
+                            TaxAmount: i.TaxAmount,
+                            LineTotal: i.LineTotal,
+                            TrackInventory: i.TrackInventorySnapshot))
+                        .ToList(),
+                    OccurredAt: now);
 
-                //_context.OutboxMessages.Add(new OutboxMessage
-                //{
-                //    Id = eventId,
-                //    TenantId = tenantId,
-                //    EventType = nameof(SaleCompleted),
-                //    Payload = JsonSerializer.Serialize(saleCompletedEvent),
-                //    OccurredAt = now
-                //});
+                _context.OutboxMessages.Add(new OutboxMessage
+                {
+                    Id = eventId,
+                    TenantId = tenantId,
+                    EventType = nameof(SaleCompleted),
+                    Payload = JsonSerializer.Serialize(saleCompletedEvent),
+                    OccurredAt = now
+                });
 
                 try
                 {

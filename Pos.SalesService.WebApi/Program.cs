@@ -36,7 +36,7 @@ namespace Pos.SalesService.WebApi
 
             builder.Services.AddPersistenceServices(builder.Configuration);
 
-            builder.Services.AddSharedInfrastructure();
+            builder.Services.AddSharedInfrastructure(builder.Configuration);
             builder.Services.AddHttpClient<
                 Pos.SalesService.Application.Interfaces.Clients.IInventoryClient,
                 Pos.SalesService.Infrastructure.Shared.Clients.InventoryClient>(client =>
