@@ -15,6 +15,8 @@ namespace Pos.SalesService.Application.Interfaces.Repositories
             Guid idempotencyKey,
             CancellationToken cancellationToken);
 
+        Task<decimal> CalculateShiftCashRefundsAsync(Guid tenantId,Guid shiftId,CancellationToken cancellationToken);
+
         Task<SaleReturn?> GetReturnForRefundAsync(
             Guid tenantId,
             Guid returnId,

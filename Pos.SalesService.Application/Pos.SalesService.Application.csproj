@@ -7,8 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Features\CashierShifts\DTOs\" />
-    <Folder Include="Features\CashierShifts\Queries\" />
     <Folder Include="Features\RefundPayments\DTOs\" />
     <Folder Include="Features\RefundPayments\Queries\" />
     <Folder Include="Features\SalesReturns\DTOs\" />

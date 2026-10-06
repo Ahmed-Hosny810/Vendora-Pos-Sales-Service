@@ -1,15 +1,14 @@
-﻿using Pos.SalesService.Application.Interfaces.Repositories;
+﻿using Microsoft.EntityFrameworkCore;
+using Pos.SalesService.Application.Interfaces.Repositories;
 using Pos.SalesService.Domain.Models;
 using Pos.SalesService.Infrastructure.Persistence.Contexts;
-using Microsoft.EntityFrameworkCore;
 namespace Pos.SalesService.Infrastructure.Persistence.Repositories
 {
     using Pos.SalesService.Application.Features.RefundPayments.Queries.GetAllQuery;
     using Pos.SalesService.Application.Wrappers;
+    using Pos.SalesService.Domain.Constants;
     using Pos.SalesService.Infrastructure.Persistence.QueryExtensions;
-    public class RefundPaymentRepositoryAsync
-    : GenericRepositoryAsync<RefundPayment, Guid>,
-      IRefundPaymentRepositoryAsync
+    public class RefundPaymentRepositoryAsync: GenericRepositoryAsync<RefundPayment, Guid>,IRefundPaymentRepositoryAsync
     {
         private readonly ApplicationDbContext _context;
 
@@ -91,6 +90,18 @@ namespace Pos.SalesService.Infrastructure.Persistence.Repositories
                 .Property(x => x.UpdatedAt)
                 .IsModified = true;
 
+        }
+
+        public async Task<decimal> CalculateShiftCashRefundsAsync(Guid tenantId, Guid shiftId, CancellationToken cancellationToken)
+        {
+            return await _context.RefundPayments
+                 .Where(refund =>
+                     refund.TenantId == tenantId &&
+                     refund.ShiftId == shiftId &&  
+                     refund.Status == PaymentStatus.Completed &&
+                     refund.IsCashSnapshot)
+                 .SumAsync(refund => (decimal?)refund.Amount, cancellationToken)
+                 ?? 0m;
         }
     }
 }

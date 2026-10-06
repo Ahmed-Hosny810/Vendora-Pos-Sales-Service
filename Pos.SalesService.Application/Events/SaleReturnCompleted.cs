@@ -1,0 +1,21 @@
+﻿
+namespace Pos.SalesService.Application.Events
+{
+    public record SaleReturnCompleted(
+         Guid EventId,
+         Guid TenantId,
+         Guid ReturnId,
+         Guid OriginalSaleId,
+         Guid ReceivingBranchId,
+         List<SaleReturnCompletedItem> Items,
+         DateTime OccurredAt);
+
+    public record SaleReturnCompletedItem(
+        Guid ReturnItemId,
+        Guid ProductId,
+        Guid? ProductVariantId,
+        decimal Quantity,
+        bool Restock,
+        bool TrackInventory,
+        string StockCondition);
+}

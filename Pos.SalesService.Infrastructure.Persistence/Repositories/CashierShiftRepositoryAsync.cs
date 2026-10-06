@@ -60,5 +60,66 @@ namespace Pos.SalesService.Infrastructure.Persistence.Repositories
                 .AnyAsync(cs => cs.TenantId == tenantId && cs.BranchId == branchId &&
                     cs.TerminalId == terminalId && cs.Status == "Open", cancellationToken);
         }
+
+        public async Task<bool> CanShiftBeClosedAsync(
+            Guid tenantId,
+            Guid shiftId,
+            CancellationToken cancellationToken)
+        {
+            return await _context.CashierShifts
+                .AnyAsync(
+                    shift =>
+                        shift.TenantId == tenantId &&
+                        shift.Id == shiftId &&
+                        shift.Status == CashierShiftStatus.Open &&
+                        !shift.Sales.Any(sale =>
+                            sale.Status == SaleStatus.CheckoutPending ||
+                            sale.Status == SaleStatus.PendingPayment ||
+                            sale.Status == SaleStatus.Completing),
+                    cancellationToken);
+        }
+
+        public async Task<decimal> CalculateShiftCashReceiptsAsync(Guid tenantId, Guid shiftId, CancellationToken cancellationToken)
+        {
+            return await _context.SalePayments
+                 .Where(payment =>
+                     payment.TenantId == tenantId &&
+                     payment.Sale.ShiftId == shiftId &&
+                     payment.Status == PaymentStatus.Completed &&
+                     payment.IsCashSnapshot)
+                 .SumAsync(payment => (decimal?)(payment.Amount - payment.ChangeAmount), cancellationToken)
+                 ?? 0m;
+        }
+
+        public async Task<decimal> CalculateShiftNonCashReceiptsAsync(Guid tenantId,Guid shiftId,CancellationToken cancellationToken)
+        {
+            return await _context.SalePayments
+                .Where(payment =>
+                    payment.TenantId == tenantId &&
+                    payment.Sale.TenantId == tenantId &&
+                    payment.Sale.ShiftId == shiftId &&
+                    payment.Status == PaymentStatus.Completed &&
+                    !payment.IsCashSnapshot)
+                .SumAsync(
+                    payment => (decimal?)(payment.Amount - payment.ChangeAmount),
+                    cancellationToken)
+                ?? 0m;
+        }
+
+
+        public async Task<decimal> CalculateShiftTotalSalesAsync(Guid tenantId, Guid shiftId, CancellationToken cancellationToken)
+        {
+            return await _context.Sales
+                .Where(sale =>
+                    sale.TenantId == tenantId &&
+                    sale.ShiftId == shiftId &&
+                    (sale.Status == SaleStatus.Completed ||
+                     sale.Status == SaleStatus.PartiallyReturned ||
+                     sale.Status == SaleStatus.Returned))
+                .SumAsync(
+                    sale => (decimal?)sale.Total,
+                    cancellationToken)
+                ?? 0m;
+        }
     }
 }

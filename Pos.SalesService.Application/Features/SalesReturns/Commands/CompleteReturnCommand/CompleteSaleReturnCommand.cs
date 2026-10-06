@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Pos.SalesService.Application.Events;
 using Pos.SalesService.Application.Features.SalesReturns.DTOs;
 using Pos.SalesService.Application.Features.SalesReturns.Services;
 using Pos.SalesService.Application.Interfaces;
@@ -7,6 +8,7 @@ using Pos.SalesService.Application.Interfaces.Services;
 using Pos.SalesService.Application.Wrappers;
 using Pos.SalesService.Domain.Constants;
 using Pos.SalesService.Domain.Models;
+using System.Text.Json;
 
 namespace Pos.SalesService.Application.Features.SalesReturns.Commands.CompleteReturnCommand
 {
@@ -21,18 +23,21 @@ namespace Pos.SalesService.Application.Features.SalesReturns.Commands.CompleteRe
     public class CompleteSaleReturnCommandHandler : IRequestHandler<CompleteSaleReturnCommand, Result<Guid>>
     {
         private readonly ISaleReturnRepositoryAsync _saleReturnRepository;
+        private readonly IOutboxRepositoryAsync _outboxRepository;
         private readonly SaleReturnService _saleReturnService;
         private readonly ICurrentUserService _currentUser;
         private readonly IUnitOfWork _unitOfWork;
 
         public CompleteSaleReturnCommandHandler(
             ISaleReturnRepositoryAsync saleReturnRepository,
+            IOutboxRepositoryAsync outboxRepository,
             SaleReturnService saleReturnService,
             ICurrentUserService currentUser,
             IUnitOfWork unitOfWork
             )
         {
             _saleReturnRepository = saleReturnRepository;
+            _outboxRepository = outboxRepository;
             _saleReturnService = saleReturnService;
             _currentUser = currentUser;
             _unitOfWork = unitOfWork;
@@ -94,8 +99,42 @@ namespace Pos.SalesService.Application.Features.SalesReturns.Commands.CompleteRe
                     Reason = "Customer return completed."
                 });
             }
+            //Add SaleReturnCompleted Event to OutBoxMessages
+            var eventId = Guid.NewGuid();
 
-            // 4. Commit the return, items, original quantities and history atomically.
+            var saleReturnCompleted = new SaleReturnCompleted(
+                EventId: eventId,
+                TenantId: tenantId.Value,
+                ReturnId: saleReturn.Id,
+                OriginalSaleId: saleReturn.OriginalSaleId,
+                ReceivingBranchId: saleReturn.BranchId,
+                Items: saleReturn.Items
+                    .OrderBy(item => item.Id)
+                    .Select(item => new SaleReturnCompletedItem(
+                        ReturnItemId: item.Id,
+                        ProductId: item.ProductId,
+                        ProductVariantId: item.ProductVariantId,
+                        Quantity: item.Quantity,
+                        Restock: item.Restock,
+                        TrackInventory: originalSaleItems[item.OriginalSaleItemId].TrackInventorySnapshot,
+                        StockCondition: item.StockCondition))
+                    .ToList(),
+                OccurredAt: saleReturn.CompletedAt);
+
+
+            await _outboxRepository.AddAsync(
+                 new OutboxMessage
+                 {
+                     Id = eventId,
+                     TenantId = tenantId.Value,
+                     EventType = nameof(SaleReturnCompleted),
+                     Payload = JsonSerializer.Serialize(saleReturnCompleted),
+                     OccurredAt = saleReturn.CompletedAt
+                 },
+                 cancellationToken);
+
+
+            // 4. Commit the return, returned quantities, history and outbox event together.
             await _saleReturnRepository.AddAsync(saleReturn, cancellationToken);
 
             var saveResult = await _unitOfWork.TrySaveReturnChangesAsync(cancellationToken);
